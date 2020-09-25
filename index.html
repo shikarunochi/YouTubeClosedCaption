@@ -3,15 +3,30 @@
 
 <head>
   <meta charset="UTF-8" />
-
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+  </style>
   <script>
+    function init() {
+      //html引数受け取り
+      var param = location.href.split("?")[1];
+      if (param != null) {
+        document.getElementById("videoId").value = param;
+        //setTimeout(startVideo, 1000);
+      }
+    }
+
     function startVideo() {
       videoId = document.getElementById("videoId").value;
       if (videoId == "") {
-        window.alert("Input VideoId");
+        window.alert("Input Video Id");
         return;
       }
       getSrt(videoId);
+
       player = new YT.Player('player', {
         height: '360',
         width: '640',
@@ -25,6 +40,7 @@
     }
 
     function onPlayerReady(event) {
+      resizeSrtArea();
       event.target.seekTo(0);
       event.target.playVideo();
       setTimeout(updatePosition, 1000);
@@ -46,9 +62,10 @@
       window.alert(player.getCurrentTime());
     }
 
-    var srtTimes = [];
+    var srtList = [];
 
     function getSrt(videoId) {
+      srtList = [];
       //https://video.google.com/timedtext?hl=en&lang=en&name=&v=eP9y_7it3ZM
       //https://css-tricks.com/how-to-fetch-and-parse-rss-feeds-in-javascript/
       fetch("https://video.google.com/timedtext?hl=en&lang=en&name=&v=" + videoId)
@@ -57,31 +74,62 @@
         .then(data => {
           //console.log(data);
           const textList = data.querySelectorAll("text")
-          let html = ``
-          let index = 0;
           textList.forEach(element => {
-            html += `
+            srtList.push({ time: 0 + element.getAttribute("start"), text: element.innerHTML, transText: '' }); //数値として
+          });
+          //console.log(srtTimes);
+          makeSrtHtml(srtList);
+        });
+
+    }
+
+    //https://max999blog.com/javascript-resize-element-size-with-window-size/
+    function resizeSrtArea() {
+      srtListDisp = document.getElementById('srtListDisp');
+      var height = window.innerHeight - srtListDisp.offsetTop;
+      if (height < 100) {
+        height = 100;
+      }
+      srtListDisp.style.height = height + "px";
+      srtListDisp.style.width = window.innerWidth + "px";
+    }
+
+    var resizeFlg;    //setTimeoutの待機中かを判定するフラグ
+
+    function windowResizeFunc() {
+      //resizeFlgに値が設定されている場合は、待ち時間中なのでリセットする
+      if (resizeFlg !== false) {
+        clearTimeout(resizeFlg);
+      }
+      //300ms待機後にリサイズ処理を実施する
+      resizeFlg = setTimeout(function () {
+        resizeSrtArea();    //リサイズを実施する処理
+      }, 300);
+    }
+    window.addEventListener("resize", windowResizeFunc);
+
+    function makeSrtHtml(srtList) {
+      var html = ``;
+      var index = 0;
+      srtList.forEach(srtInfo => {
+        html += `
           <p id="${index}" onclick="jumpTo(${index});">
-          ${element.innerHTML}
+          ${srtInfo["text"]}
           </p>
           `
-            srtTimes.push(0 + element.getAttribute("start")); //数値として
-            index++;
-          });
-          //document.body.insertAdjacentHTML("beforeend", html);
-          var srtList = document.getElementById('srtList');
-          srtList.innerHTML = html
-
-          //console.log(srtTimes);
-        });
+        index++;
+      });
+      var srtListDisp = document.getElementById('srtListDisp');
+      srtListDisp.innerHTML = html
     }
+
     //https://webmanab-html.com/tip/scroll-box-animation/
     var preTarget = 0;
 
 
     function selectSrt(index) {
       document.getElementById(preTarget).style.color = "";
-      var srtList = document.getElementById('srtList');
+      var srtList = document.getElementById('srtListDisp');
       var targetSrt = document.getElementById(index);
       var position = targetSrt.offsetTop - srtList.offsetTop - srtList.clientHeight / 2; //全体の中心あたりにもってくる。
       //console.log("position:" + position);
@@ -89,9 +137,12 @@
         position = 0;
       }
       //もし現在の位置が、画面外なら、ユーザがスクロール操作中なので位置は変更しない。
-      if(Math.abs(srtList.scrollTop - position) < srtList.clientHeight / 2 )
-      {
+      if (Math.abs(srtList.scrollTop - position) < srtList.clientHeight / 2) {
         srtList.scrollTop = position;
+      }
+      if (needAdjustFlg == true) { //needAdjustFlgが立っていれば強制位置合わせ
+        srtList.scrollTop = position;
+        needAdjustFlg = false;
       }
       //location.hash = index;
       targetSrt.style.color = "red";
@@ -103,8 +154,8 @@
       //現在の再生時間を取得、それに一番近いインデックスまでジャンプ
       curTime = player.getCurrentTime();
       index = 0;
-      for (index = 0; index < srtTimes.length; index++) {
-        if (curTime < srtTimes[index]) {
+      for (index = 0; index < srtList.length; index++) {
+        if (curTime < srtList[index]["time"]) {
           break;
         }
       }
@@ -115,21 +166,27 @@
       setTimeout(updatePosition, 500);
     }
 
-    function jumpTo(index){
-      player.seekTo(srtTimes[index]);
+    //現在の再生位置に合わせる
+    var needAdjustFlg = false;
+    function adjust() {
+      needAdjustFlg = true;
+    }
+
+    function jumpTo(index) {
+      player.seekTo(srtList[index]["time"]);
     }
   </script>
 
 </head>
 
-<body>
+<body onload="init();">
 
-  <input type="text" id="videoId" placeholder="VideoId">
-  <input type="button" value="StartVideo" onClick='startVideo();'>
-  <hr/>
+  <input type="text" id="videoId" placeholder="Video Id">
+  <input type="button" value="Start Video" onClick='startVideo();'>
+  <input type="button" value="Adjust CC Position" onClick='adjust();'>
+  <hr />
   <!-- //https://developers.google.com/youtube/iframe_api_reference?hl=ja-->
-  <div id="player"></div>
-
+  <div id="player" style=' margin: auto;'></div>
 
   <script>
     var tag = document.createElement('script');
@@ -140,7 +197,7 @@
     var player;
   </script>
 
-  <div id="srtList" style="width:100%;height:500px;overflow:auto;">
+  <div id="srtListDisp" style="width:100%;height:500px;overflow:auto;">
   </div>
 
 </body>
