@@ -15,7 +15,10 @@
       var param = location.href.split("?")[1];
       if (param != null) {
         document.getElementById("videoId").value = param;
+        
+        //関数直接呼出しだとうまくいかなかったので、ボタン自動クリックで再生させる
         //setTimeout(startVideo, 1000);
+        document.getElementById("startVideo").click();
       }
     }
 
@@ -182,8 +185,8 @@
 <body onload="init();">
 
   <input type="text" id="videoId" placeholder="Video Id">
-  <input type="button" value="Start Video" onClick='startVideo();'>
-  <input type="button" value="Adjust CC" onClick='adjust();'>
+  <input type="button" id="startVideo" value="Start Video" onClick='startVideo();'>
+  <input type="button" value="Adjust CC Position" onClick='adjust();'>
   <hr />
   <!-- //https://developers.google.com/youtube/iframe_api_reference?hl=ja-->
   <div id="player" style=' margin: auto;'></div>
