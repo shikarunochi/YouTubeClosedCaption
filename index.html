@@ -16,9 +16,9 @@
       if (param != null) {
         document.getElementById("videoId").value = param;
         
-        //関数直接呼出しだとうまくいかなかったので、ボタン自動クリックで再生させる→環境によってダメっぽい。
+        //関数直接呼出しだとうまくいかなかったので、ボタン自動クリックで再生させる
         //setTimeout(startVideo, 1000);
-        //document.getElementById("startVideo").click();
+        document.getElementById("startVideo").click();
       }
     }
 
@@ -29,17 +29,23 @@
         return;
       }
       getSrt(videoId);
-
-      player = new YT.Player('player', {
-        height: '360',
-        width: '640',
-        videoId: videoId, //'eP9y_7it3ZM',
-        startSeconds: 0,
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
-        }
-      });
+      if(player != null){
+        player.stopVideo();
+        player.loadVideoById(videoId)
+        player.seekTo(0);
+        player.playVideo();
+      }else{
+        player = new YT.Player('player', {
+          height: '360',
+          width: '640',
+          videoId: videoId, //'eP9y_7it3ZM',
+          startSeconds: 0,
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
     }
 
     function onPlayerReady(event) {
