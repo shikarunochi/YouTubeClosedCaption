@@ -121,9 +121,10 @@
       var html = ``;
       var index = 0;
       srtList.forEach(srtInfo => {
+        srttext = srtInfo["text"].replace(/&amp;#39;/g, "'");
         html += `
           <p id="${index}" onclick="jumpTo(${index});">
-          ${srtInfo["text"]}
+          ${srttext}
           </p>
           `
         index++;
